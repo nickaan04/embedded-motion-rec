@@ -16,7 +16,7 @@
 // CHANGE THIS FOR EACH COLLECTION SESSION
 // Must match COLLECTION_LABEL in collect_data.py on your computer
 // Valid values: "still", "shake", "tilt left", "tilt right", "tilt forward", "tilt backward"
-const char CURRENT_LABEL[] = "still";
+const char CURRENT_LABEL[] = "shake";
 
 // Sampling configuration
 // One training example = 1 second of accelerometer data at 50 Hz = 50 rows.
