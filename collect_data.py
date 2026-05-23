@@ -32,7 +32,7 @@ except ImportError:
 # CHANGE THIS TO MATCH CURRENT_LABEL IN THE .INO
 # Options: "still", "shake", "tilt left", "tilt right",
 #          "tilt forward", "tilt backward"
-COLLECTION_LABEL = "shake"
+COLLECTION_LABEL = "tilt forward"
 
 # Seconds to count down after SPACEBAR before the board starts sampling.
 COUNTDOWN_SECONDS = 3

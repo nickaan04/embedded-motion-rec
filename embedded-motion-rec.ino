@@ -16,7 +16,7 @@
 // CHANGE THIS FOR EACH COLLECTION SESSION
 // Must match COLLECTION_LABEL in collect_data.py on your computer
 // Valid values: "still", "shake", "tilt left", "tilt right", "tilt forward", "tilt backward"
-const char CURRENT_LABEL[] = "shake";
+const char CURRENT_LABEL[] = "tilt forward";
 
 // Sampling configuration
 // One training example = 1 second of accelerometer data at 50 Hz = 50 rows.
@@ -27,7 +27,7 @@ static const uint16_t SAMPLE_INTERVAL_MS = 20;  // 1000 ms / 50 = 20 ms between 
 static bool recording = false;
 
 // RGB LED helpers
-// The Nano 33 BLE Sense RGB LED is ACTIVE-LOW
+// The Nano 33 BLE Sense RBG LED is ACTIVE-LOW
 
 void setRgb(bool redOn, bool greenOn, bool blueOn) {
   digitalWrite(LEDR, redOn ? LOW : HIGH);
@@ -44,13 +44,13 @@ void showLabelLed(const char *label) {
   if (strcmp(label, "tilt right") == 0) {
     setRgb(true, false, false);       // red
   } else if (strcmp(label, "tilt left") == 0) {
-    setRgb(false, true, false);     // green
+    setRgb(false, false, true);     // green
   } else if (strcmp(label, "tilt forward") == 0) {
-    setRgb(false, false, true);     // blue
+    setRgb(false, true, false);     // blue
   } else if (strcmp(label, "tilt backward") == 0) {
-    setRgb(true, false, true);      // magenta (red + blue)
+    setRgb(true, true, false);      // magenta (red + blue)
   } else if (strcmp(label, "shake") == 0) {
-    setRgb(true, true, false);      // yellow (red + green)
+    setRgb(true, false, true);      // yellow (red + green)
   } else if (strcmp(label, "still") == 0) {
     setRgb(false, true, true);      // cyan (green + blue)
   } else {
