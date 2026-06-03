@@ -5,12 +5,14 @@
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "motion_model.h"
+#include "motion_model_settings.h"
 
-const int TIMESTEPS = 50;
-const int AXES = 3;
-const int NUM_CLASSES = 6;
+const int TIMESTEPS = kTimesteps;
+const int AXES = kAxes;
+const int NUM_CLASSES = kNumClasses;
 const int SAMPLE_INTERVAL_MS = 20;
 
+// Classes for diff types of motion
 #define STILL         0
 #define SHAKE         1
 #define TILT_FORWARD  2
@@ -44,10 +46,10 @@ float imu_buffer[TIMESTEPS][AXES];
 
 const float CONFIDENCE_THRESHOLD = 0.6;
 
-const int TOTAL_ROUNDS = 10;
+const int TOTAL_ROUNDS = 10; //num rounds for motion game (not simon says)
 int score = 0;
 
-const int MAX_SEQUENCE = 20;
+const int MAX_SEQUENCE = 20; //max rounds for simon says
 int sequence[MAX_SEQUENCE];
 int sequence_length = 0;
 
@@ -61,7 +63,7 @@ void ledsOff() {
   setLED(0, 0, 0);
 }
 
-void showMotionColor(int motionClass) {
+void showMotionColor(int motionClass) { //diff LED configs for each motion class
   switch (motionClass) {
     case STILL:         setLED(0, 1, 1); break;
     case SHAKE:         setLED(1, 1, 0); break;
@@ -73,12 +75,12 @@ void showMotionColor(int motionClass) {
   }
 }
 
-void collectSamples() {
+void collectSamples() { // Record 50 samples of xyz acceleration from IMU
   for (int t = 0; t < TIMESTEPS; t++) {
     float ax, ay, az;
     unsigned long start = millis();
 
-    while (!IMU.accelerationAvailable()) {
+    while (!IMU.accelerationAvailable()) { //wait for new reading
       if (millis() - start > 500) break;
     }
 
@@ -92,12 +94,13 @@ void collectSamples() {
   }
 }
 
+//sends IMU buffer to model and returns prediction
 int runInference(float* confidence) {
   float scale = input_tensor->params.scale;
   int zero_point = input_tensor->params.zero_point;
 
   int idx = 0;
-
+  //quantize float IMU values into int8 values expected by the model
   for (int t = 0; t < TIMESTEPS; t++) {
     for (int a = 0; a < AXES; a++) {
       int q = (int)roundf(imu_buffer[t][a] / scale) + zero_point;
@@ -106,7 +109,7 @@ int runInference(float* confidence) {
     }
   }
 
-  if (interpreter->Invoke() != kTfLiteOk) {
+  if (interpreter->Invoke() != kTfLiteOk) { //run the model
     return -1;
   }
 
@@ -129,19 +132,19 @@ int runInference(float* confidence) {
   return best_class;
 }
 
-void waitForEnter() {
+void waitForEnter() { //wait for user to press Enter on serial before moving forward
   while (!Serial.available());
   while (Serial.available()) Serial.read();
 }
 
-char chooseGame() {
+char chooseGame() { //Wait for user to choose game
   Serial.println();
   Serial.println("Choose a game:");
   Serial.println("1 = Motion Prompt Game");
   Serial.println("2 = Simon Says Motion Game");
   Serial.println("Enter 1 or 2:");
 
-  while (true) {
+  while (true) { //get serial reading for game - only accept '1' or '2', everything else is invalid
     if (Serial.available()) {
       char choice = Serial.read();
 
@@ -156,8 +159,8 @@ char chooseGame() {
   }
 }
 
-void playPromptRound(int round) {
-  int target = random(NUM_CLASSES);
+void playPromptRound(int round) { //play motion round - not simon says
+  int target = random(NUM_CLASSES); //figure out random motion
 
   Serial.println();
   Serial.print("Round: ");
@@ -171,18 +174,14 @@ void playPromptRound(int round) {
   showMotionColor(target);
   delay(1000); //change for how long you want light to show
   ledsOff();
-
-  for (int i = 0; i < 3; i++) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
-  }
+  delay(300);
+  setLED(1, 1, 1); //let user know we are collecting
 
   collectSamples();
+  ledsOff();
 
   float confidence = 0.0;
-  int predicted = runInference(&confidence);
+  int predicted = runInference(&confidence); //figure out which motion
 
   Serial.print("Predicted: ");
   Serial.println(predicted >= 0 ? LABELS[predicted] : "ERROR");
@@ -190,6 +189,7 @@ void playPromptRound(int round) {
   Serial.print("Confidence: ");
   Serial.println(confidence, 3);
 
+  //player scores only if confidence is greater than threshold and if prediction is what was given to user
   if (predicted == target && confidence >= CONFIDENCE_THRESHOLD) {
     score++;
     Serial.println("Correct!");
@@ -206,7 +206,7 @@ void playPromptRound(int round) {
   delay(1500);
 }
 
-void playPromptGame() {
+void playPromptGame() { //full motion game (just printing stuff mostly)
   score = 0;
 
   Serial.println();
@@ -237,7 +237,7 @@ void playPromptGame() {
   ledsOff();
 }
 
-void playSequence() {
+void playSequence() { //play current simon says sequence
   int flash_ms = max(300, 600 - ((sequence_length / 5) * 100)); //delay gets faster over time
 
   Serial.println("Watch the sequence:");
@@ -253,21 +253,14 @@ void playSequence() {
   }
 }
 
-int getPlayerMove(int step) {
+int getPlayerMove(int step) { //get one motion from player during simon says sequence
   Serial.print("Move ");
   Serial.print(step + 1);
   Serial.print(": ");
-  setLED(1,1,1); delay(50);
-
-  for (int i = 0; i < 2; i++) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(80);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(80);
-  }
+  setLED(1,1,1); delay(50); //white LED lets player know its ready for collecting
 
   collectSamples();
-  setLED(0,0,0); delay(250);
+  ledsOff(); delay(250); //turn off after recording
 
   float confidence = 0.0;
   int predicted = runInference(&confidence);
@@ -284,7 +277,7 @@ int getPlayerMove(int step) {
   return predicted;
 }
 
-void playSimonGame() {
+void playSimonGame() { //play actual game
   sequence_length = 0;
   bool game_over = false;
 
@@ -294,7 +287,7 @@ void playSimonGame() {
   delay(1000);
 
   while (!game_over && sequence_length < MAX_SEQUENCE) {
-    sequence[sequence_length] = random(NUM_CLASSES);
+    sequence[sequence_length] = random(NUM_CLASSES); //add a random motion every round
     sequence_length++;
 
     Serial.println();
@@ -328,7 +321,7 @@ void playSimonGame() {
     }
 
     if (!game_over) {
-      Serial.println("Sequence complete --- Next round.");
+      Serial.println("Sequence complete --- Next round."); //print blank lines so user can't look at serial monitor and get sequence during game
       delay(1000);
       for (int i = 0; i < 40; i++) {
         Serial.println();
@@ -371,17 +364,18 @@ void setup() {
 
   Serial.println("=== Motion Game Menu ===");
 
-  if (!IMU.begin()) {
+  if (!IMU.begin()) { //start IMU sensor
     Serial.println("IMU init failed!");
     while (1);
   }
 
-  tfl_model = tflite::GetModel(g_model);
+  tfl_model = tflite::GetModel(g_model); //load model
 
   if (tfl_model->version() != 3) {
     Serial.println("WARNING: Unexpected model schema version");
   }
 
+  //only 2 operations exist in model
   resolver.AddFullyConnected();
   resolver.AddSoftmax();
 
