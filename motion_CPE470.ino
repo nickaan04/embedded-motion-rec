@@ -55,8 +55,8 @@ int sequence_length = 0;
 
 void setLED(int r, int b, int g) {
   digitalWrite(LEDR, r ? LOW : HIGH);
-  digitalWrite(LEDG, g ? LOW : HIGH);
-  digitalWrite(LEDB, b ? LOW : HIGH);
+  digitalWrite(LEDG, b ? LOW : HIGH);
+  digitalWrite(LEDB, g ? LOW : HIGH);
 }
 
 void ledsOff() {
@@ -66,9 +66,9 @@ void ledsOff() {
 void showMotionColor(int motionClass) { //diff LED configs for each motion class
   switch (motionClass) {
     case STILL:         setLED(0, 1, 1); break;
-    case SHAKE:         setLED(1, 1, 0); break;
+    case SHAKE:         setLED(1, 0, 1); break;
     case TILT_FORWARD:  setLED(0, 1, 0); break;
-    case TILT_BACKWARD: setLED(1, 0, 1); break;
+    case TILT_BACKWARD: setLED(1, 1, 0); break;
     case TILT_LEFT:     setLED(0, 0, 1); break;
     case TILT_RIGHT:    setLED(1, 0, 0); break;
     default:                  ledsOff(); break;
