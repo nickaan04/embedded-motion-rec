@@ -11,12 +11,12 @@ const int AXES = 3;
 const int NUM_CLASSES = 6;
 const int SAMPLE_INTERVAL_MS = 20;
 
-#define CLASS_STILL         0
-#define CLASS_SHAKE         1
-#define CLASS_TILT_FORWARD  2
-#define CLASS_TILT_BACKWARD 3
-#define CLASS_TILT_LEFT     4
-#define CLASS_TILT_RIGHT    5
+#define STILL         0
+#define SHAKE         1
+#define TILT_FORWARD  2
+#define TILT_BACKWARD 3
+#define TILT_LEFT     4
+#define TILT_RIGHT    5
 
 const char* LABELS[NUM_CLASSES] = {
   "still",
@@ -63,31 +63,13 @@ void ledsOff() {
 
 void showMotionColor(int motionClass) {
   switch (motionClass) {
-    case CLASS_STILL:         setLED(0, 1, 1); break;
-    case CLASS_SHAKE:         setLED(1, 1, 0); break;
-    case CLASS_TILT_FORWARD:  setLED(0, 1, 0); break;
-    case CLASS_TILT_BACKWARD: setLED(1, 0, 1); break;
-    case CLASS_TILT_LEFT:     setLED(0, 0, 1); break;
-    case CLASS_TILT_RIGHT:    setLED(1, 0, 0); break;
+    case STILL:         setLED(0, 1, 1); break;
+    case SHAKE:         setLED(1, 1, 0); break;
+    case TILT_FORWARD:  setLED(0, 1, 0); break;
+    case TILT_BACKWARD: setLED(1, 0, 1); break;
+    case TILT_LEFT:     setLED(0, 0, 1); break;
+    case TILT_RIGHT:    setLED(1, 0, 0); break;
     default:                  ledsOff(); break;
-  }
-}
-
-void flashCorrect() {
-  for (int i = 0; i < 2; i++) {
-    setLED(0, 1, 0);
-    delay(120);
-    ledsOff();
-    delay(120);
-  }
-}
-
-void flashWrong() {
-  for (int i = 0; i < 3; i++) {
-    setLED(1, 0, 0);
-    delay(150);
-    ledsOff();
-    delay(150);
   }
 }
 
@@ -178,7 +160,7 @@ void playPromptRound(int round) {
   int target = random(NUM_CLASSES);
 
   Serial.println();
-  Serial.print("--- Round ");
+  Serial.print("Round: ");
   Serial.print(round);
   Serial.print(" / ");
   Serial.println(TOTAL_ROUNDS);
@@ -189,8 +171,6 @@ void playPromptRound(int round) {
   showMotionColor(target);
   delay(1000); //change for how long you want light to show
   ledsOff();
-
-  Serial.println("GO!");
 
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_BUILTIN, HIGH);
@@ -212,12 +192,10 @@ void playPromptRound(int round) {
 
   if (predicted == target && confidence >= CONFIDENCE_THRESHOLD) {
     score++;
-    Serial.println("CORRECT!");
-    flashCorrect();
+    Serial.println("Correct!");
   } else {
-    Serial.print("WRONG! Expected: ");
+    Serial.print("Wrong! Expected: ");
     Serial.println(LABELS[target]);
-    flashWrong();
   }
 
   Serial.print("Score: ");
@@ -232,7 +210,7 @@ void playPromptGame() {
   score = 0;
 
   Serial.println();
-  Serial.println("=== Motion Prompt Game ===");
+  Serial.println("----- Motion Prompt Game -----");
   Serial.println("Match the LED prompt with the correct motion.");
   delay(1000);
 
@@ -250,31 +228,23 @@ void playPromptGame() {
 
   if (score == TOTAL_ROUNDS) {
     Serial.println("Perfect score!");
-
-    for (int i = 0; i < 3; i++) {
-      setLED(1, 0, 0); delay(200);
-      setLED(0, 1, 0); delay(200);
-      setLED(0, 0, 1); delay(200);
-    }
   } else if (score >= TOTAL_ROUNDS / 2) {
     Serial.println("Good job!");
-    flashCorrect();
   } else {
-    Serial.println("Keep practicing!");
-    flashWrong();
+    Serial.println("Bad job.");
   }
 
   ledsOff();
 }
 
 void playSequence() {
-  int flash_ms = max(300, 600 - ((sequence_length / 5) * 100));
+  int flash_ms = max(300, 600 - ((sequence_length / 5) * 100)); //delay gets faster over time
 
   Serial.println("Watch the sequence:");
 
   for (int i = 0; i < sequence_length; i++) {
     Serial.print("  ");
-    // Serial.println(LABELS[sequence[i]]);
+    // Serial.println(LABELS[sequence[i]]); //debugging stuff for LEDS matching with moves
 
     showMotionColor(sequence[i]);
     delay(flash_ms);
@@ -319,7 +289,7 @@ void playSimonGame() {
   bool game_over = false;
 
   Serial.println();
-  Serial.println("=== Simon Says Motion Game ===");
+  Serial.println("----- Simon Says Motion Game -----");
   Serial.println("Repeat the full motion sequence each round.");
   delay(1000);
 
@@ -328,21 +298,21 @@ void playSimonGame() {
     sequence_length++;
 
     Serial.println();
-    Serial.print("=== Round ");
+    Serial.print("----- Round ");
     Serial.print(sequence_length);
-    Serial.println(" ===");
+    Serial.println(" -----");
 
     delay(500);
     playSequence();
 
     delay(800);
-    Serial.println("Your turn!");
+    Serial.println("Your turn");
 
     for (int step = 0; step < sequence_length; step++) {
       int player_move = getPlayerMove(step);
 
       if (player_move != sequence[step]) {
-        Serial.println("WRONG!");
+        Serial.println("Wrong");
 
         Serial.print("Expected: ");
         Serial.println(LABELS[sequence[step]]);
@@ -350,41 +320,34 @@ void playSimonGame() {
         Serial.print("Got: ");
         Serial.println(player_move >= 0 ? LABELS[player_move] : "unclear");
 
-        flashWrong();
         game_over = true;
         break;
       } else {
-        // flashCorrect();
-        delay(200);
+        delay(200); //next round
       }
     }
 
     if (!game_over) {
-      Serial.println("Sequence complete!");
+      Serial.println("Sequence complete --- Next round.");
       delay(1000);
+      for (int i = 0; i < 40; i++) {
+        Serial.println();
+      }
     }
   }
 
   Serial.println();
   Serial.println("=== GAME OVER ===");
 
-  Serial.print("You reached sequence length: ");
+  Serial.print("Your highest round: ");
   Serial.println(sequence_length - 1);
 
   if (sequence_length - 1 == 0) {
-    Serial.println("Better luck next time!");
+    Serial.println("Do better.");
   } else if (sequence_length - 1 < 5) {
-    Serial.println("Good start! Keep practicing.");
-  } else if (sequence_length - 1 < 10) {
-    Serial.println("Nice! You have a good memory.");
+    Serial.println("Solid I guess.");
   } else {
-    Serial.println("Incredible! You're a motion master!");
-
-    for (int i = 0; i < 5; i++) {
-      setLED(1, 0, 0); delay(150);
-      setLED(0, 1, 0); delay(150);
-      setLED(0, 0, 1); delay(150);
-    }
+    Serial.println("Nice job.");
   }
 
   ledsOff();
@@ -409,7 +372,7 @@ void setup() {
   Serial.println("=== Motion Game Menu ===");
 
   if (!IMU.begin()) {
-    Serial.println("ERROR: IMU init failed!");
+    Serial.println("IMU init failed!");
     while (1);
   }
 
